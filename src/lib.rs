@@ -1,3 +1,4 @@
+pub mod inputs;
 /// Operations over iterators. See the [Operation trait](trait.Operation) for details.
 /// Unfortunately this crate relies on defining two different sets of structs.
 /// The intention is that the "outer" structs, suffixed with "Operation",
@@ -9,5 +10,4 @@
 /// the actual processing is done in the next method of the Iterator
 /// implementation).
 pub mod operations;
-pub mod inputs;
 pub mod outputs;
