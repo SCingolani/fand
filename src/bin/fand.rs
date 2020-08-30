@@ -4,6 +4,7 @@ use log::debug;
 
 use pifan::inputs::RPiCpuTemp;
 use pifan::operations::*;
+use pifan::operations::parameters::*;
 use pifan::outputs::{sample_forever, PWM};
 
 use simplelog::*;

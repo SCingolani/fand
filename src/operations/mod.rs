@@ -3,6 +3,9 @@ use log::{debug, trace};
 use pid::Pid;
 use std::iter::Fuse;
 
+pub mod parameters;
+use parameters::*;
+
 /// An operation is essentially an iterator adaptor; it defines a single
 /// operation which takes in a type with the Iterator trait and returns another
 /// type which also has the Iterator trait. Simple cases would just map a
@@ -19,8 +22,7 @@ where
     fn apply(self, iter: I) -> J;
 }
 
-/// An operation which just reproduces the input iterator
-pub struct IdentityOperation;
+
 
 /// The actual implementation of the operation
 #[derive(Debug)]
@@ -52,11 +54,6 @@ where
     }
 }
 
-/// An operation that implements a PID control
-pub struct PIDOperation {
-    pub pid: Pid<f64>,
-    pub offset: u32,
-}
 
 /// The actual implementation of the operation
 #[derive(Debug)]
@@ -114,14 +111,6 @@ where
             offset: self.offset
         }
     }
-}
-
-/// An operation which uses a critcially dampened oscillator to reach a target value
-pub struct CriticallyDampenerOperation {
-    pub m: f64,
-    pub k: f64,
-    pub dt: f64,
-    pub target: f64,
 }
 
 /// The actual implementation of the operation
@@ -194,11 +183,6 @@ where
     }
 }
 
-/// An operation that clips all values
-pub struct ClipOperation {
-    pub min: f64,
-    pub max: f64,
-}
 
 /// The actual implementation of the operation
 #[derive(Debug)]
@@ -254,11 +238,6 @@ where
     }
 }
 
-/// An operation that supersamples its input
-pub struct SupersampleOperation {
-    pub n: usize,
-}
-
 /// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Supersample<I>
@@ -310,11 +289,6 @@ where
             last_val: None,
         }
     }
-}
-
-/// An operation that supersamples its input
-pub struct AverageOperation {
-    pub n: usize,
 }
 
 /// The actual implementation of the operation
