@@ -2,10 +2,10 @@ use std::{iter, thread, time};
 
 use log::debug;
 
-use pifan::inputs::RPiCpuTemp;
+use pifan::inputs::Input;
 use pifan::operations::*;
 use pifan::operations::parameters::*;
-use pifan::outputs::{sample_forever, PWM};
+use pifan::outputs::{sample_forever, PWM, Output};
 
 use simplelog::*;
 
@@ -67,7 +67,7 @@ fn main() {
       }
     */
 
-    let input = RPiCpuTemp;
+    let input = Input::RPiCpuTemp;
 
     let output = PWM::new().unwrap();
 

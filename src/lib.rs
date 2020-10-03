@@ -11,3 +11,4 @@ pub mod inputs;
 /// implementation).
 pub mod operations;
 pub mod outputs;
+pub mod pipeline;
