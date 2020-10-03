@@ -7,7 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pid = "2.1.0"
+pid = { version = "2.1.0", features = ["serde"] }
 log = "0.4.11"
 simplelog = "0.8.0"
 rppal = "0.11.3"
+serde = { version = "1.0", features = ["derive"] }
