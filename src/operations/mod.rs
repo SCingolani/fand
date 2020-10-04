@@ -12,16 +12,20 @@ use parameters::*;
 // export the parameters under the operations module
 pub mod parameters;
 
+use serde::{Serialize};
+
 use log::{debug, trace};
+use tracing::{span, event, Level};
 
 use pid::Pid;
 use std::iter::Fuse;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Identity<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
 }
 
@@ -46,11 +50,12 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct PID<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
     pid: Pid<f64>,
     offset: u32,
@@ -64,6 +69,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             let control = self.pid.next_control_output(val);
             let output = {
@@ -85,15 +91,8 @@ where
                 let sum = (p + i + d) as u32;
                 (self.offset + std::cmp::max(0, std::cmp::min(100, sum))) as f64
             };
-            trace!(
-                "PID: {:2.2} -> {:2.2} {:2.2} {:2.2} -> {:2}({:2.2})",
-                val,
-                control.p,
-                control.i,
-                control.d,
-                output,
-                control.output
-            );
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "PID", "{}", serialized);
             Some(output)
         } else {
             None
@@ -106,7 +105,8 @@ where
     I: Iterator<Item = f64>,
 {
     fn apply(self, iter: I) -> PID<I> {
-        trace!("PID created with {:?}", self.pid);
+        let serialized: String = serde_json::to_string(&self).unwrap();
+        event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{}", serialized);
         PID {
             iter: iter.fuse(),
             pid: self.pid,
@@ -115,11 +115,12 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct DampenedOscillator<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
     m: f64,
     k: f64,
@@ -139,6 +140,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             self.target = val;
 
@@ -151,12 +153,9 @@ where
             self.vel = new_vel;
             self.pos = new_pos;
 
-            trace!(
-                "DampenedOscillator: x= {}; v= {}; a= {}",
-                new_pos,
-                new_vel,
-                acc
-            );
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{} {}", {println!("Evaluated"); "hi"} ,serialized);
+
             Some(new_pos)
         } else {
             None
@@ -184,11 +183,12 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Clip<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
     max: u64,
     min: u64,
@@ -202,6 +202,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             // Clip and ordering not implemented for f64; so we round up. Here we assume we are
             // generally dealing with values between 0 and 100...
@@ -215,7 +216,8 @@ where
 
             let out: f64 = (tmp as f64) / 1000.;
 
-            trace!("Clip: {:2.2} -> {:2.2}", val, out);
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "Clip", "{}", serialized);
 
             Some(out)
         } else {
@@ -237,11 +239,12 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Supersample<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
     n: usize,
     count: usize,
@@ -256,18 +259,17 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
         if self.last_val.is_some() && self.count < self.n {
-            trace!(
-                "Supersample: Repeated {:?} ({:2})",
-                self.last_val,
-                self.count
-            );
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
             self.count += 1;
             self.last_val
         } else if let Some(val) = self.iter.next() {
             self.last_val = Some(val);
             self.count = 1;
-            trace!("Supersample: Sampled {:2.2}", val);
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
             Some(val)
         } else {
             None
@@ -289,11 +291,12 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Average<I>
 where
     I: Iterator,
 {
+    #[serde(skip_serializing)]
     iter: Fuse<I>,
     n: usize,
     index: usize,
@@ -308,18 +311,21 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             if self.prev_vals.len() < self.n {
                 self.prev_vals.push(val);
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
-                trace!("Average: Filling vec {:?} ({:2.2})", self.prev_vals, mean);
+                let serialized: String = serde_json::to_string(&self).unwrap();
+                event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             } else {
                 self.prev_vals[self.index] = val;
                 self.index = (self.index + 1) % self.n;
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
-                trace!("Average: {:?} -> ({:2.2})", self.prev_vals, mean);
+                let serialized: String = serde_json::to_string(&self).unwrap();
+                event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             }

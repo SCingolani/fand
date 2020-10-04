@@ -1,6 +1,7 @@
 use std::vec;
 
 use log::{debug, trace};
+use tracing_subscriber;
 
 use pifan::inputs::Input;
 use pifan::operations::parameters::*;
@@ -35,13 +36,15 @@ fn main() {
                 .help("Sets the level of verbosity"),
         )
         .get_matches();
-
+    /*
     match matches.occurrences_of("v") {
         0 => TermLogger::init(LevelFilter::Error, Config::default(), TerminalMode::Mixed).unwrap(),
         1 => TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Mixed).unwrap(),
         2 => TermLogger::init(LevelFilter::Trace, Config::default(), TerminalMode::Mixed).unwrap(),
         3 | _ => println!("Don't be crazy"),
     }
+*/
+    tracing_subscriber::fmt::init();
 
     debug!("Starting with debug information enabled.");
     trace!("Tracing information enabled.");
