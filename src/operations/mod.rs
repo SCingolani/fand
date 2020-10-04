@@ -22,8 +22,6 @@ where
     fn apply(self, iter: I) -> J;
 }
 
-
-
 /// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Identity<I>
@@ -54,7 +52,6 @@ where
     }
 }
 
-
 /// The actual implementation of the operation
 #[derive(Debug)]
 pub struct PID<I>
@@ -77,10 +74,22 @@ where
         if let Some(val) = self.iter.next() {
             let control = self.pid.next_control_output(val);
             let output = {
-                let p = if control.p.is_sign_negative() { -control.p } else { 0. };
-                let i = if control.i.is_sign_negative() { -control.i } else { 0. };
-                let d = if control.d.is_sign_negative() { -control.d } else { 0. };
-                let sum = (p + i + d) as u32 ;
+                let p = if control.p.is_sign_negative() {
+                    -control.p
+                } else {
+                    0.
+                };
+                let i = if control.i.is_sign_negative() {
+                    -control.i
+                } else {
+                    0.
+                };
+                let d = if control.d.is_sign_negative() {
+                    -control.d
+                } else {
+                    0.
+                };
+                let sum = (p + i + d) as u32;
                 (self.offset + std::cmp::max(0, std::cmp::min(100, sum))) as f64
             };
             trace!(
@@ -108,7 +117,7 @@ where
         PID {
             iter: iter.fuse(),
             pid: self.pid,
-            offset: self.offset
+            offset: self.offset,
         }
     }
 }
@@ -182,7 +191,6 @@ where
         }
     }
 }
-
 
 /// The actual implementation of the operation
 #[derive(Debug)]
@@ -321,7 +329,6 @@ where
             } else {
                 self.prev_vals[self.index] = val;
                 self.index = (self.index + 1) % self.n;
-                assert!(self.index >= 0 && self.index < self.n);
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
                 trace!("Average: {:?} -> ({:2.2})", self.prev_vals, mean);
                 debug!("Average: {:2.4}", mean);

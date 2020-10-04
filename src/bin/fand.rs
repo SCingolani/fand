@@ -1,11 +1,9 @@
-use std::{iter, thread, time};
-
-use log::debug;
+use std::iter;
 
 use pifan::inputs::Input;
-use pifan::operations::*;
 use pifan::operations::parameters::*;
-use pifan::outputs::{sample_forever, PWM, Output};
+use pifan::operations::*;
+use pifan::outputs::{sample_forever, PWM};
 
 use simplelog::*;
 

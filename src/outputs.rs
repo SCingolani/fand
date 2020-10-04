@@ -1,24 +1,22 @@
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 
 use log::debug;
 
 use ::std::{thread, time};
 
-use rppal::gpio::Gpio;
 use rppal::pwm;
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub enum Output {
     PWM,
     Sink,
 }
 
-
 pub trait Pushable {
     fn push(&mut self, val: f64);
 }
 
-pub fn sample_forever<I>(source: &mut Iterator<Item = f64>, mut output: I, rate: u64) -> ()
+pub fn sample_forever<I>(source: &mut dyn Iterator<Item = f64>, mut output: I, rate: u64) -> ()
 where
     I: Pushable,
 {
@@ -34,7 +32,7 @@ where
     }
 }
 
-pub struct PWM { 
+pub struct PWM {
     pin: pwm::Pwm,
 }
 
@@ -53,6 +51,6 @@ impl PWM {
 impl Pushable for PWM {
     fn push(&mut self, val: f64) {
         debug!("PWM output set to {:2.4}", val / 100_f64);
-        self.pin.set_duty_cycle(val / 100_f64);
+        self.pin.set_duty_cycle(val / 100_f64).unwrap();
     }
 }

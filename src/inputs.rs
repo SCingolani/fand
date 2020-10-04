@@ -1,10 +1,10 @@
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 
 use std::fs;
 
 use log::debug;
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub enum Input {
     RPiCpuTemp,
 }
@@ -15,8 +15,7 @@ impl Iterator for Input {
     #[inline]
     fn next(&mut self) -> Option<f64> {
         match self {
-            Input::RPiCpuTemp =>
-            {
+            Input::RPiCpuTemp => {
                 let file_content = fs::read_to_string("/sys/class/thermal/thermal_zone0/temp").ok();
                 let the_temp = file_content
                     .and_then(|s| s.trim().parse::<f64>().ok())
