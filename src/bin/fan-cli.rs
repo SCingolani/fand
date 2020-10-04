@@ -57,29 +57,29 @@ fn main() {
             let default_pipeline = Pipeline {
                 input: Input::RPiCpuTemp,
                 operations: vec![
-                    OperationDescription::Average(AverageOperation { n: 5 }),
-                    OperationDescription::PID(PIDOperation {
+                    OperationParameters::Average(AverageParameters { n: 5 }),
+                    OperationParameters::PID(PIDParameters {
                         pid: Pid::new(2., 2.0, 5., 100., 10., 30., 35.),
                         offset: 30,
                     }),
-                    OperationDescription::Clip(ClipOperation {
+                    OperationParameters::Clip(ClipParameters {
                         min: 30.0,
                         max: 100.0,
                     }),
-                    OperationDescription::Supersample(SupersampleOperation { n: 100 }),
-                    OperationDescription::DampenedOscillator(CriticallyDampenerOperation {
+                    OperationParameters::Supersample(SupersampleParameters { n: 100 }),
+                    OperationParameters::DampenedOscillator(DampenedOscillatorParameters {
                         m: 0.5,
                         k: 2.,
                         dt: 0.25,
                         target: 0.0,
                     }),
-                    OperationDescription::DampenedOscillator(CriticallyDampenerOperation {
+                    OperationParameters::DampenedOscillator(DampenedOscillatorParameters {
                         m: 1.0,
                         k: 1.,
                         dt: 0.25,
                         target: 0.0,
                     }),
-                    OperationDescription::Clip(ClipOperation {
+                    OperationParameters::Clip(ClipParameters {
                         min: 30.0,
                         max: 100.0,
                     }),

@@ -2,7 +2,7 @@ use std::iter;
 
 use pifan::inputs::Input;
 use pifan::operations::parameters::*;
-use pifan::operations::*;
+
 use pifan::outputs::{sample_forever, PWM};
 
 use simplelog::*;
@@ -15,11 +15,11 @@ fn main() {
     TermLogger::init(LevelFilter::Trace, Config::default(), TerminalMode::Mixed).unwrap();
 
     let dummy_data = vec![1.0, 2.0, 3.0];
-    let operation = IdentityOperation;
+    let operation = IdentityParameters;
     let operated = operation.apply(dummy_data.into_iter());
     println!("{:?}", operated.collect::<Vec<f64>>());
     let dummy_data = vec![1.0, 2.0, 3.0];
-    let operation = PIDOperation {
+    let operation = PIDParameters {
         pid: Pid::new(1.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0),
         offset: 0,
     };
@@ -27,7 +27,7 @@ fn main() {
     println!("{:?}", operated.collect::<Vec<f64>>());
 
     let dummy_data = iter::repeat(1.0);
-    let operation = CriticallyDampenerOperation {
+    let operation = DampenedOscillatorParameters {
         m: 10.0,
         k: 1.0,
         dt: 0.5,
@@ -69,28 +69,28 @@ fn main() {
 
     let output = PWM::new().unwrap();
 
-    let average = AverageOperation { n: 5 };
+    let average = AverageParameters { n: 5 };
 
-    let pid = PIDOperation {
+    let pid = PIDParameters {
         pid: Pid::new(2., 2.0, 5., 100., 10., 30., 35.),
         offset: 30,
     };
-    let supersampler = SupersampleOperation { n: 100 };
-    let clipper = ClipOperation {
+    let supersampler = SupersampleParameters { n: 100 };
+    let clipper = ClipParameters {
         min: 30.0,
         max: 100.0,
     };
-    let clipper2 = ClipOperation {
+    let clipper2 = ClipParameters {
         min: 30.0,
         max: 100.0,
     };
-    let dampener = CriticallyDampenerOperation {
+    let dampener = DampenedOscillatorParameters {
         m: 0.5,
         k: 2.,
         dt: 0.25,
         target: 0.0,
     };
-    let dampener2 = CriticallyDampenerOperation {
+    let dampener2 = DampenedOscillatorParameters {
         m: 1.0,
         k: 1.,
         dt: 0.25,

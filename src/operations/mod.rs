@@ -1,28 +1,22 @@
+//! This module defines a series of operations that act on iterators. In this sense an operation is
+//! an iterator adaptor: it consumes an iterator to produce a new one. The general pattern is
+//! inspired by the way iterator adaptors work in the itertools crate, but also using a "builder"
+//! kind of approach: For each possible operation there is a struct *`OperationName`*`Parameters`
+//! which contain the parameters that define the operation itself. These structs implement a common
+//! trait -[Operation](trait.Operation)- which takes the parameters and an input iterator, to
+//! produce the new iterator that applies the corresponding operation. There is also an enum over
+//! the different parameter structs to facilitate serialization / deserialization.
+
+use parameters::*;
+
+// export the parameters under the operations module
+pub mod parameters;
+
 use log::{debug, trace};
 
 use pid::Pid;
 use std::iter::Fuse;
 
-pub mod parameters;
-use parameters::*;
-
-/// An operation is essentially an iterator adaptor; it defines a single
-/// operation which takes in a type with the Iterator trait and returns another
-/// type which also has the Iterator trait. Simple cases would just map a
-/// function over the input iterator to produce a new one; but more complicated
-/// ones may do different things. This approach here is taken from the itertool
-/// crate which defines a bunch of iterator adaptors but without defining a generic trait over
-/// them.
-pub trait Operation<I, J>
-where
-    I: Iterator,
-    J: Iterator,
-{
-    /// Applies the operation on the input iterator to produce a new one.
-    fn apply(self, iter: I) -> J;
-}
-
-/// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Identity<I>
 where
@@ -43,7 +37,7 @@ where
     }
 }
 
-impl<I> Operation<I, Identity<I>> for IdentityOperation
+impl<I> Operation<I, Identity<I>> for IdentityParameters
 where
     I: Iterator,
 {
@@ -52,7 +46,6 @@ where
     }
 }
 
-/// The actual implementation of the operation
 #[derive(Debug)]
 pub struct PID<I>
 where
@@ -108,7 +101,7 @@ where
     }
 }
 
-impl<I> Operation<I, PID<I>> for PIDOperation
+impl<I> Operation<I, PID<I>> for PIDParameters
 where
     I: Iterator<Item = f64>,
 {
@@ -122,9 +115,8 @@ where
     }
 }
 
-/// The actual implementation of the operation
 #[derive(Debug)]
-pub struct CriticallyDampener<I>
+pub struct DampenedOscillator<I>
 where
     I: Iterator,
 {
@@ -139,7 +131,7 @@ where
     acc: f64,
 }
 
-impl<I> Iterator for CriticallyDampener<I>
+impl<I> Iterator for DampenedOscillator<I>
 where
     I: Iterator<Item = f64>,
 {
@@ -160,7 +152,7 @@ where
             self.pos = new_pos;
 
             trace!(
-                "CriticallyDampener: x= {}; v= {}; a= {}",
+                "DampenedOscillator: x= {}; v= {}; a= {}",
                 new_pos,
                 new_vel,
                 acc
@@ -172,13 +164,13 @@ where
     }
 }
 
-impl<I> Operation<I, CriticallyDampener<I>> for CriticallyDampenerOperation
+impl<I> Operation<I, DampenedOscillator<I>> for DampenedOscillatorParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> CriticallyDampener<I> {
+    fn apply(self, iter: I) -> DampenedOscillator<I> {
         let cc = 2_f64 * (self.k * self.m).sqrt();
-        CriticallyDampener {
+        DampenedOscillator {
             iter: iter.fuse(),
             m: self.m,
             k: self.k,
@@ -192,7 +184,6 @@ where
     }
 }
 
-/// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Clip<I>
 where
@@ -233,7 +224,7 @@ where
     }
 }
 
-impl<I> Operation<I, Clip<I>> for ClipOperation
+impl<I> Operation<I, Clip<I>> for ClipParameters
 where
     I: Iterator<Item = f64>,
 {
@@ -246,7 +237,6 @@ where
     }
 }
 
-/// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Supersample<I>
 where
@@ -285,7 +275,7 @@ where
     }
 }
 
-impl<I> Operation<I, Supersample<I>> for SupersampleOperation
+impl<I> Operation<I, Supersample<I>> for SupersampleParameters
 where
     I: Iterator<Item = f64>,
 {
@@ -299,7 +289,6 @@ where
     }
 }
 
-/// The actual implementation of the operation
 #[derive(Debug)]
 pub struct Average<I>
 where
@@ -340,7 +329,7 @@ where
     }
 }
 
-impl<I> Operation<I, Average<I>> for AverageOperation
+impl<I> Operation<I, Average<I>> for AverageParameters
 where
     I: Iterator<Item = f64>,
 {

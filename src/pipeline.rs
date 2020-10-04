@@ -2,13 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::inputs::Input;
 use crate::operations::parameters::*;
-use crate::operations::Operation;
 use crate::outputs::{sample_forever, Output, PWM};
 
 #[derive(Serialize, Deserialize)]
 pub struct Pipeline {
     pub input: Input,
-    pub operations: Vec<OperationDescription>,
+    pub operations: Vec<OperationParameters>,
     pub output: Output,
     pub sample_rate: u64,
 }
@@ -22,12 +21,12 @@ impl Pipeline {
             // show up somewhere to deal with the different operations, but at this point here
             // we shouldn't need to match I think...
             last_iterator = match operation {
-                OperationDescription::Identity(op) => Box::new(op.apply(last_iterator)),
-                OperationDescription::PID(op) => Box::new(op.apply(last_iterator)),
-                OperationDescription::DampenedOscillator(op) => Box::new(op.apply(last_iterator)),
-                OperationDescription::Clip(op) => Box::new(op.apply(last_iterator)),
-                OperationDescription::Supersample(op) => Box::new(op.apply(last_iterator)),
-                OperationDescription::Average(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::Identity(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::PID(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::DampenedOscillator(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::Clip(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::Supersample(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::Average(op) => Box::new(op.apply(last_iterator)),
             }
         }
         // TODO: Below code should be generalized if more outputs are to be implemented; is here a
