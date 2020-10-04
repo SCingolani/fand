@@ -102,7 +102,7 @@ fn main() {
         .apply(dampener2.apply(
             dampener
                 .apply(
-                    supersampler.apply(clipper.apply(pid.apply(average.apply(input.into_iter())))),
+                    supersampler.apply(clipper.apply(pid.apply(average.apply(input)))),
                 )
         )
                 .step_by(4),

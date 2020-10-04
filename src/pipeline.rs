@@ -14,8 +14,8 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn start(self) -> () {
-        let mut last_iterator: Box<dyn Iterator<Item = f64>> = Box::new(self.input.into_iter());
+    pub fn start(self) {
+        let mut last_iterator: Box<dyn Iterator<Item = f64>> = Box::new(self.input);
         for operation in self.operations {
             // FIXME: the code below defeats the purpose of having the operation trait...
             // need to figure out how to solve this... eventually some match like below will
