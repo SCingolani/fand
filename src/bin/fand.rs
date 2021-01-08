@@ -1,129 +1,138 @@
-use std::iter;
+use std::vec;
+
+use std::os::unix::net::{UnixStream, UnixListener};
+use std::sync::Mutex;
+use std::sync::Arc;
+use std::io::Write;
+
+use log::{debug, trace};
+use tracing_subscriber;
 
 use pifan::inputs::Input;
 use pifan::operations::parameters::*;
-
-use pifan::outputs::{sample_forever, PWM};
-
-use simplelog::*;
+use pifan::outputs::Output;
+use pifan::pipeline::Pipeline;
 
 use pid::Pid;
 
+use std::fs::File;
+
+use simplelog::*;
+
+use clap::{App, Arg};
+
 fn main() {
-    println!("Hello, world!");
-
-    TermLogger::init(LevelFilter::Trace, Config::default(), TerminalMode::Mixed).unwrap();
-
-    let dummy_data = vec![1.0, 2.0, 3.0];
-    let operation = IdentityParameters;
-    let operated = operation.apply(dummy_data.into_iter(), None);
-    println!("{:?}", operated.collect::<Vec<f64>>());
-    let dummy_data = vec![1.0, 2.0, 3.0];
-    let operation = PIDParameters {
-        pid: Pid::new(1.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0),
-        offset: 0,
-    };
-    let operated = operation.apply(dummy_data.into_iter(), None);
-    println!("{:?}", operated.collect::<Vec<f64>>());
-
-    let dummy_data = iter::repeat(1.0);
-    let operation = DampenedOscillatorParameters {
-        m: 10.0,
-        k: 1.0,
-        dt: 0.5,
-        target: 0.0,
-    };
-    let operated = operation.apply(dummy_data, None).step_by(2).take(20);
-    println!("{:?}", operated.collect::<Vec<f64>>());
+    let matches = App::new("Fan speed control")
+        .version("0.1")
+        .author("")
+        .about("Configurable control system")
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("FILE")
+                .help("Sets a custom config file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("v")
+                .short("v")
+                .multiple(true)
+                .help("Sets the level of verbosity"),
+        )
+        .get_matches();
     /*
-      const min: i64 = 0;
-      const step: i64 = 5;
-      const max: i64 = 100;
-      let mut val: i64 = min;
-      let mut dir: bool = true;
-      let output = PWM::new().unwrap();
+    match matches.occurrences_of("v") {
+        0 => TermLogger::init(LevelFilter::Error, Config::default(), TerminalMode::Mixed).unwrap(),
+        1 => TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Mixed).unwrap(),
+        2 => TermLogger::init(LevelFilter::Trace, Config::default(), TerminalMode::Mixed).unwrap(),
+        3 | _ => println!("Don't be crazy"),
+    }
+*/
+    tracing_subscriber::fmt::init();
 
+    debug!("Starting with debug information enabled.");
+    trace!("Tracing information enabled.");
 
-
-      loop {
-          if dir {
-              val += step;
-          } else {
-              val -= step;
-          }
-          if val > max {
-              val = max;
-              dir = !dir;
-          } else if val < min {
-              val = min;
-              dir = !dir;
-          }
-          debug!("setting duty to {}", (val as f64) / 100.);
-          output.pin.set_duty_cycle((val as f64) / 100.);
-
-          thread::sleep(time::Duration::from_secs(5));
-      }
-    */
-
-    let input = Input::RPiCpuTemp;
-
-    let output = PWM::new().unwrap();
-
-    let average = AverageParameters { n: 5 };
-
-    let pid = PIDParameters {
-        pid: Pid::new(2., 2.0, 5., 100., 10., 30., 35.),
-        offset: 30,
-    };
-    let supersampler = SupersampleParameters { n: 100 };
-    let clipper = ClipParameters {
-        min: 30.0,
-        max: 100.0,
-    };
-    let clipper2 = ClipParameters {
-        min: 30.0,
-        max: 100.0,
-    };
-    let dampener = DampenedOscillatorParameters {
-        m: 0.5,
-        k: 2.,
-        dt: 0.25,
-        target: 0.0,
-    };
-    let dampener2 = DampenedOscillatorParameters {
-        m: 1.0,
-        k: 1.,
-        dt: 0.25,
-        target: 0.0,
-    };
-    //let operations: Vec<& Operation> = vec![&pid, &clipper, &supersampler, &dampener];
-    //
-    let  operated = Box::new(clipper2
-        .apply(dampener2.apply(
-            dampener
-                .apply(
-                    supersampler.apply(clipper.apply(pid.apply(average.apply(input, None), None), None), None),
-                None)
-       , None )
-                .step_by(4),
-         None)/*
-        .map(|x| {
-            let val = (x * 1000.) as u64;
-            if val == 25000 {
-                0.
-            } else if val < 35000 {
-                35.
-            } else {
-                x
-            }
-        })*/);
-
-    sample_forever(operated, output, 1000);
-
-    /*
-        for i in 1..10 {
-            thread::sleep(time::Duration::from_secs(1));
-            println!("{:?}", operated.next());
+    let pipeline: Pipeline = match matches.value_of("config") {
+        Some(filename) => {
+            debug!("Reading configuration from: {}", filename);
+            let config_file = File::open(filename).expect("Failed to read config file");
+            serde_json::from_reader(config_file).expect("Failed to parse config file")
         }
-    */
+        None => {
+            debug!("Using default configuration (use verbose level 2 to print it out)");
+            let default_pipeline = Pipeline {
+                input: Input::RPiCpuTemp,
+                operations: vec![
+                    OperationParameters::Average(AverageParameters { n: 5 }),
+                    OperationParameters::PID(PIDParameters {
+                        pid: Pid::new(2., 2.0, 5., 100., 10., 30., 35.),
+                        offset: 30,
+                    }),
+                    OperationParameters::Clip(ClipParameters {
+                        min: 30.0,
+                        max: 100.0,
+                    }),
+                    OperationParameters::Supersample(SupersampleParameters { n: 100 }),
+                    OperationParameters::DampenedOscillator(DampenedOscillatorParameters {
+                        m: 0.5,
+                        k: 2.,
+                        dt: 0.25,
+                        target: 0.0,
+                    }),
+                    OperationParameters::DampenedOscillator(DampenedOscillatorParameters {
+                        m: 1.0,
+                        k: 1.,
+                        dt: 0.25,
+                        target: 0.0,
+                    }),
+                    OperationParameters::Clip(ClipParameters {
+                        min: 30.0,
+                        max: 100.0,
+                    }),
+                    OperationParameters::Subsample(SubsampleParameters { n: 4 }),
+                ],
+                output: Output::PWM,
+                sample_rate: 1000,
+            };
+            trace!(
+                "{}",
+                serde_json::to_string_pretty(&default_pipeline).unwrap()
+            );
+            default_pipeline
+        }
+    };
+
+    const SOCKET_ADDRESS: &str = "/tmp/fand.socket";
+    debug!("Starting UNIX socket at: {}", SOCKET_ADDRESS);
+    let listener = UnixListener::bind(SOCKET_ADDRESS).expect("Failed to open socket.");
+
+    let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let rx = pipeline.start(true).expect("Didn't receive monitoring channel");
+
+    let clients_copy = Arc::clone(&clients);
+
+    std::thread::spawn(move || {
+        for val in rx.iter() {
+            let mut current_clients = &mut *clients_copy.lock().unwrap();
+            for client in current_clients {
+                client.write_all(val.as_bytes()).unwrap();
+            }
+        }
+    }
+    );
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                let mut current_clients = clients.lock().unwrap();
+                current_clients.push(stream);
+            },
+            Err(err) => break,
+        }
+    }
+
+    debug!("Exitting");
 }
