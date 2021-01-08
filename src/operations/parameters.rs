@@ -4,6 +4,21 @@ use serde::{Deserialize, Serialize};
 
 use pid::Pid;
 
+use std::sync::mpsc::Sender;
+
+
+#[derive(Debug)]
+pub struct Monitor {
+    pub id: usize,
+    pub tx: Sender<String>,
+}
+
+impl Monitor {
+    pub fn send(&self, str: String) {
+        self.tx.send(format!("{}: {}", self.id, str));
+    }
+}
+
 /// Common trait that all parameters implement which converts the description of the operation
 /// itself into the actual iterator that carries it out.
 pub trait Operation<I, J>
@@ -13,7 +28,7 @@ where
 {
     /// Given self and an input iterator; produce a new iterator that applies the operation
     /// described by `self`.
-    fn apply(self, iter: I) -> J;
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> J;
 }
 
 /// Union type to store the description of some operation; this way we can easily

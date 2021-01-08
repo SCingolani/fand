@@ -20,6 +20,9 @@ use tracing::{span, event, Level};
 use pid::Pid;
 use std::iter::Fuse;
 
+use std::sync::mpsc::Sender;
+
+
 #[derive(Debug, Serialize)]
 pub struct Identity<I>
 where
@@ -27,6 +30,8 @@ where
 {
     #[serde(skip_serializing)]
     iter: Fuse<I>,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for Identity<I>
@@ -45,8 +50,8 @@ impl<I> Operation<I, Identity<I>> for IdentityParameters
 where
     I: Iterator,
 {
-    fn apply(self, iter: I) -> Identity<I> {
-        Identity { iter: iter.fuse() }
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> Identity<I> {
+        Identity { iter: iter.fuse(), monitor }
     }
 }
 
@@ -59,6 +64,8 @@ where
     iter: Fuse<I>,
     pid: Pid<f64>,
     offset: u32,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for PID<I>
@@ -93,6 +100,7 @@ where
             };
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "PID", "{}", serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("PID {}", serialized)))).unwrap();
             Some(output)
         } else {
             None
@@ -104,13 +112,12 @@ impl<I> Operation<I, PID<I>> for PIDParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> PID<I> {
-        let serialized: String = serde_json::to_string(&self).unwrap();
-        event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{}", serialized);
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> PID<I> {
         PID {
             iter: iter.fuse(),
             pid: self.pid,
             offset: self.offset,
+            monitor
         }
     }
 }
@@ -130,6 +137,8 @@ where
     pos: f64,
     vel: f64,
     acc: f64,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for DampenedOscillator<I>
@@ -155,6 +164,7 @@ where
 
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{} {}", {println!("Evaluated"); "hi"} ,serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("DampenedOscillator {}", serialized)))).unwrap();
 
             Some(new_pos)
         } else {
@@ -167,7 +177,7 @@ impl<I> Operation<I, DampenedOscillator<I>> for DampenedOscillatorParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> DampenedOscillator<I> {
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> DampenedOscillator<I> {
         let cc = 2_f64 * (self.k * self.m).sqrt();
         DampenedOscillator {
             iter: iter.fuse(),
@@ -179,6 +189,7 @@ where
             pos: 100.0,
             vel: 0.0,
             acc: 0.0,
+            monitor,
         }
     }
 }
@@ -192,6 +203,8 @@ where
     iter: Fuse<I>,
     max: u64,
     min: u64,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for Clip<I>
@@ -218,6 +231,7 @@ where
 
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Clip", "{}", serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Clip {}", serialized)))).unwrap();
 
             Some(out)
         } else {
@@ -230,11 +244,12 @@ impl<I> Operation<I, Clip<I>> for ClipParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> Clip<I> {
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> Clip<I> {
         Clip {
             iter: iter.fuse(),
             max: (self.max * 1000.) as u64,
             min: (self.min * 1000.) as u64,
+            monitor,
         }
     }
 }
@@ -249,6 +264,8 @@ where
     n: usize,
     count: usize,
     last_val: Option<f64>,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for Supersample<I>
@@ -263,6 +280,7 @@ where
         if self.last_val.is_some() && self.count < self.n {
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample {}", serialized)))).unwrap();
             self.count += 1;
             self.last_val
         } else if let Some(val) = self.iter.next() {
@@ -270,6 +288,7 @@ where
             self.count = 1;
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample {}", serialized)))).unwrap();
             Some(val)
         } else {
             None
@@ -281,12 +300,13 @@ impl<I> Operation<I, Supersample<I>> for SupersampleParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> Supersample<I> {
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> Supersample<I> {
         Supersample {
             iter: iter.fuse(),
             n: self.n,
             count: 1,
             last_val: None,
+            monitor,
         }
     }
 }
@@ -299,6 +319,8 @@ where
     #[serde(skip_serializing)]
     iter: Fuse<I>,
     n: usize,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for Subsample<I>
@@ -315,6 +337,7 @@ where
         }
         let serialized: String = serde_json::to_string(&self).unwrap();
         event!(Level::TRACE, category = "monitoring", operation = "Subsample", "{}", serialized);
+        self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Subsample {}", serialized)))).unwrap();
         self.iter.next()
     }
 }
@@ -323,10 +346,11 @@ impl<I> Operation<I, Subsample<I>> for SubsampleParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> Subsample<I> {
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> Subsample<I> {
         Subsample {
             iter: iter.fuse(),
             n: self.n,
+            monitor,
         }
     }
 }
@@ -341,6 +365,8 @@ where
     n: usize,
     index: usize,
     prev_vals: Vec<f64>,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
 }
 
 impl<I> Iterator for Average<I>
@@ -358,6 +384,7 @@ where
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average {}", serialized)))).unwrap();
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             } else {
@@ -366,6 +393,7 @@ where
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average {}", serialized)))).unwrap();
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             }
@@ -379,12 +407,13 @@ impl<I> Operation<I, Average<I>> for AverageParameters
 where
     I: Iterator<Item = f64>,
 {
-    fn apply(self, iter: I) -> Average<I> {
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> Average<I> {
         Average {
             iter: iter.fuse(),
             n: self.n,
             index: 0,
             prev_vals: Vec::new(),
+            monitor,
         }
     }
 }

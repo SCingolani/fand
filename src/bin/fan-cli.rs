@@ -1,5 +1,10 @@
 use std::vec;
 
+use std::os::unix::net::{UnixStream, UnixListener};
+use std::sync::Mutex;
+use std::sync::Arc;
+use std::io::Write;
+
 use log::{debug, trace};
 use tracing_subscriber;
 
@@ -99,7 +104,35 @@ fn main() {
         }
     };
 
-    pipeline.start();
+    const SOCKET_ADDRESS: &str = "/tmp/fand.socket";
+    debug!("Starting UNIX socket at: {}", SOCKET_ADDRESS);
+    let listener = UnixListener::bind(SOCKET_ADDRESS).expect("Failed to open socket.");
+
+    let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let rx = pipeline.start(true).expect("Didn't receive monitoring channel");
+
+    let clients_copy = Arc::clone(&clients);
+
+    std::thread::spawn(move || {
+        for val in rx.iter() {
+            let mut current_clients = &mut *clients_copy.lock().unwrap();
+            for client in current_clients {
+                client.write_all(val.as_bytes()).unwrap();
+            }
+        }
+    }
+    );
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                let mut current_clients = clients.lock().unwrap();
+                current_clients.push(stream);
+            },
+            Err(err) => break,
+        }
+    }
 
     debug!("Exitting");
 }

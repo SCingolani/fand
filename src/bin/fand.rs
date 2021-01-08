@@ -16,14 +16,14 @@ fn main() {
 
     let dummy_data = vec![1.0, 2.0, 3.0];
     let operation = IdentityParameters;
-    let operated = operation.apply(dummy_data.into_iter());
+    let operated = operation.apply(dummy_data.into_iter(), None);
     println!("{:?}", operated.collect::<Vec<f64>>());
     let dummy_data = vec![1.0, 2.0, 3.0];
     let operation = PIDParameters {
         pid: Pid::new(1.0, 0.0, 0.0, 100.0, 100.0, 100.0, 0.0),
         offset: 0,
     };
-    let operated = operation.apply(dummy_data.into_iter());
+    let operated = operation.apply(dummy_data.into_iter(), None);
     println!("{:?}", operated.collect::<Vec<f64>>());
 
     let dummy_data = iter::repeat(1.0);
@@ -33,7 +33,7 @@ fn main() {
         dt: 0.5,
         target: 0.0,
     };
-    let operated = operation.apply(dummy_data).step_by(2).take(20);
+    let operated = operation.apply(dummy_data, None).step_by(2).take(20);
     println!("{:?}", operated.collect::<Vec<f64>>());
     /*
       const min: i64 = 0;
@@ -98,15 +98,15 @@ fn main() {
     };
     //let operations: Vec<& Operation> = vec![&pid, &clipper, &supersampler, &dampener];
     //
-    let mut operated = clipper2
+    let  operated = Box::new(clipper2
         .apply(dampener2.apply(
             dampener
                 .apply(
-                    supersampler.apply(clipper.apply(pid.apply(average.apply(input)))),
-                )
-        )
+                    supersampler.apply(clipper.apply(pid.apply(average.apply(input, None), None), None), None),
+                None)
+       , None )
                 .step_by(4),
-        )/*
+         None)/*
         .map(|x| {
             let val = (x * 1000.) as u64;
             if val == 25000 {
@@ -116,9 +116,9 @@ fn main() {
             } else {
                 x
             }
-        })*/;
+        })*/);
 
-    sample_forever(&mut operated, output, 1000);
+    sample_forever(operated, output, 1000);
 
     /*
         for i in 1..10 {

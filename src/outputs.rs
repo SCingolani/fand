@@ -16,7 +16,7 @@ pub trait Pushable {
     fn push(&mut self, val: f64);
 }
 
-pub fn sample_forever<I>(source: &mut dyn Iterator<Item = f64>, mut output: I, rate: u64)
+pub fn sample_forever<I>(mut source: Box<Iterator<Item = f64>>, mut output: I, rate: u64)
 where
     I: Pushable,
 {
