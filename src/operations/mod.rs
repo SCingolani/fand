@@ -95,12 +95,13 @@ where
                 } else {
                     0.
                 };
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("PID: {{\"P\": {}, \"I\": {}, \"D\": {}}}\n", p, i, d))));
                 let sum = (p + i + d) as u32;
                 (self.offset + std::cmp::max(0, std::cmp::min(100, sum))) as f64
             };
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "PID", "{}", serialized);
-            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("PID {}", serialized)))).unwrap();
+            //self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("PID: {}\n", serialized))));
             Some(output)
         } else {
             None
@@ -164,7 +165,7 @@ where
 
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{} {}", {println!("Evaluated"); "hi"} ,serialized);
-            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("DampenedOscillator {}", serialized)))).unwrap();
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("DampenedOscillator: {}\n", serialized))));
 
             Some(new_pos)
         } else {
@@ -231,7 +232,7 @@ where
 
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Clip", "{}", serialized);
-            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Clip {}", serialized)))).unwrap();
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Clip: {}\n", serialized))));
 
             Some(out)
         } else {
@@ -280,7 +281,7 @@ where
         if self.last_val.is_some() && self.count < self.n {
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
-            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample {}", serialized)))).unwrap();
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample: {}\n", serialized))));
             self.count += 1;
             self.last_val
         } else if let Some(val) = self.iter.next() {
@@ -288,7 +289,7 @@ where
             self.count = 1;
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
-            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample {}", serialized)))).unwrap();
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample: {}\n", serialized))));
             Some(val)
         } else {
             None
@@ -337,7 +338,7 @@ where
         }
         let serialized: String = serde_json::to_string(&self).unwrap();
         event!(Level::TRACE, category = "monitoring", operation = "Subsample", "{}", serialized);
-        self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Subsample {}", serialized)))).unwrap();
+        self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Subsample: {}\n", serialized))));
         self.iter.next()
     }
 }
@@ -384,7 +385,7 @@ where
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
-                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average {}", serialized)))).unwrap();
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average: {}\n", serialized))));
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             } else {
@@ -393,7 +394,7 @@ where
                 let mean = self.prev_vals.iter().sum::<f64>() / (self.prev_vals.len() as f64);
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
-                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average {}", serialized)))).unwrap();
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average: {}\n", serialized))));
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             }
