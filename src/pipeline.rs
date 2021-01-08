@@ -26,6 +26,7 @@ impl Pipeline {
                 OperationParameters::DampenedOscillator(op) => Box::new(op.apply(last_iterator)),
                 OperationParameters::Clip(op) => Box::new(op.apply(last_iterator)),
                 OperationParameters::Supersample(op) => Box::new(op.apply(last_iterator)),
+                OperationParameters::Subsample(op) => Box::new(op.apply(last_iterator)),
                 OperationParameters::Average(op) => Box::new(op.apply(last_iterator)),
             }
         }

@@ -28,6 +28,7 @@ pub enum OperationParameters {
     DampenedOscillator(DampenedOscillatorParameters),
     Clip(ClipParameters),
     Supersample(SupersampleParameters),
+    Subsample(SubsampleParameters),
     Average(AverageParameters),
 }
 
@@ -72,6 +73,13 @@ pub struct ClipParameters {
 pub struct SupersampleParameters {
     /// How many times to supersample (i.e. it repeats it's input n times before checking for a new
     /// input)
+    pub n: usize,
+}
+
+/// An operation that subsamples its input
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct SubsampleParameters {
+    /// How many times to subsample (i.e. it drops it's input n times before providing a new output
     pub n: usize,
 }
 

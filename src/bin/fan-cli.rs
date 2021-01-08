@@ -86,6 +86,7 @@ fn main() {
                         min: 30.0,
                         max: 100.0,
                     }),
+                    OperationParameters::Subsample(SubsampleParameters { n: 4 }),
                 ],
                 output: Output::PWM,
                 sample_rate: 1000,

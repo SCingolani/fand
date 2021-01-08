@@ -292,6 +292,46 @@ where
 }
 
 #[derive(Debug, Serialize)]
+pub struct Subsample<I>
+where
+    I: Iterator,
+{
+    #[serde(skip_serializing)]
+    iter: Fuse<I>,
+    n: usize,
+}
+
+impl<I> Iterator for Subsample<I>
+where
+    I: Iterator<Item = f64>,
+{
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
+        for i in (0..self.n) {
+            let _discard = self.iter.next();
+        }
+        let serialized: String = serde_json::to_string(&self).unwrap();
+        event!(Level::TRACE, category = "monitoring", operation = "Subsample", "{}", serialized);
+        self.iter.next()
+    }
+}
+
+impl<I> Operation<I, Subsample<I>> for SubsampleParameters
+where
+    I: Iterator<Item = f64>,
+{
+    fn apply(self, iter: I) -> Subsample<I> {
+        Subsample {
+            iter: iter.fuse(),
+            n: self.n,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct Average<I>
 where
     I: Iterator,
