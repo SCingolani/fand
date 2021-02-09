@@ -99,6 +99,7 @@ where
                 let sum = (p + i + d) as u32;
                 (self.offset + std::cmp::max(0, std::cmp::min(100, sum))) as f64
             };
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", output))));
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "PID", "{}", serialized);
             //self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("PID: {}\n", serialized))));
@@ -166,6 +167,7 @@ where
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "DampenedOscillator", "{} {}", {println!("Evaluated"); "hi"} ,serialized);
             self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("DampenedOscillator: {}\n", serialized))));
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", new_pos))));
 
             Some(new_pos)
         } else {
@@ -233,6 +235,7 @@ where
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Clip", "{}", serialized);
             self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Clip: {}\n", serialized))));
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", out))));
 
             Some(out)
         } else {
@@ -282,6 +285,7 @@ where
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
             self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample: {}\n", serialized))));
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", self.last_val.unwrap_or(-1.0)))));
             self.count += 1;
             self.last_val
         } else if let Some(val) = self.iter.next() {
@@ -290,6 +294,7 @@ where
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(Level::TRACE, category = "monitoring", operation = "Supersample", "{}", serialized);
             self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Supersample: {}\n", serialized))));
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", val))));
             Some(val)
         } else {
             None
@@ -336,10 +341,12 @@ where
         for i in (0..self.n) {
             let _discard = self.iter.next();
         }
+        let next = self.iter.next();
         let serialized: String = serde_json::to_string(&self).unwrap();
         event!(Level::TRACE, category = "monitoring", operation = "Subsample", "{}", serialized);
         self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Subsample: {}\n", serialized))));
-        self.iter.next()
+        self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", next.unwrap_or(-1.0)))));
+        next
     }
 }
 
@@ -386,6 +393,7 @@ where
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
                 self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average: {}\n", serialized))));
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", mean))));
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             } else {
@@ -395,6 +403,7 @@ where
                 let serialized: String = serde_json::to_string(&self).unwrap();
                 event!(Level::TRACE, category = "monitoring", operation = "Average", "{}", serialized);
                 self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("Average: {}\n", serialized))));
+                self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", mean))));
                 debug!("Average: {:2.4}", mean);
                 Some(mean)
             }
