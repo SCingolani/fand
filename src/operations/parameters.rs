@@ -42,6 +42,7 @@ pub enum OperationParameters {
     PID(PIDParameters),
     DampenedOscillator(DampenedOscillatorParameters),
     Clip(ClipParameters),
+    AtLeast(AtLeastParameters),
     Supersample(SupersampleParameters),
     Subsample(SubsampleParameters),
     Average(AverageParameters),
@@ -81,6 +82,13 @@ pub struct ClipParameters {
     pub min: f64,
     /// Maximum value of output
     pub max: f64,
+}
+
+/// An operation that clamp values below the reference
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct AtLeastParameters {
+    /// Reference value
+    pub val: f64,
 }
 
 /// An operation that supersamples its input

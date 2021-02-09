@@ -34,6 +34,7 @@ impl Pipeline {
                 OperationParameters::PID(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::DampenedOscillator(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::Clip(op) => Box::new(op.apply(last_iterator, local_tx)),
+                OperationParameters::AtLeast(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::Supersample(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::Subsample(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::Average(op) => Box::new(op.apply(last_iterator, local_tx)),

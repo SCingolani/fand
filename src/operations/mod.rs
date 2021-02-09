@@ -259,6 +259,62 @@ where
 }
 
 #[derive(Debug, Serialize)]
+pub struct AtLeast<I>
+where
+    I: Iterator,
+{
+    #[serde(skip_serializing)]
+    iter: Fuse<I>,
+    val: u64,
+    #[serde(skip_serializing)]
+    monitor: Option<Monitor>,
+}
+
+impl<I> Iterator for AtLeast<I>
+where
+    I: Iterator<Item = f64>,
+{
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<I::Item> {
+        let span = span!(Level::TRACE, "monitoring");
+        if let Some(val) = self.iter.next() {
+            // Clip and ordering not implemented for f64; so we round up. Here we assume we are
+            // generally dealing with values between 0 and 100...
+            let mut tmp: u64 = (val * 1000.) as u64; // get up to a thoudansth of the value
+            if tmp < self.val {
+                tmp = 0;
+            }
+
+            let out: f64 = (tmp as f64) / 1000.;
+
+            let serialized: String = serde_json::to_string(&self).unwrap();
+            event!(Level::TRACE, category = "monitoring", operation = "AtLeast", "{}", serialized);
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!("AtLeast: {}\n", serialized))));
+            self.monitor.as_ref().and_then(|monitor| Some(monitor.send(format!(">:{}\n", out))));
+
+            Some(out)
+        } else {
+            None
+        }
+    }
+}
+
+impl<I> Operation<I, AtLeast<I>> for AtLeastParameters
+where
+    I: Iterator<Item = f64>,
+{
+    fn apply(self, iter: I, monitor: Option<Monitor>) -> AtLeast<I> {
+        AtLeast {
+            iter: iter.fuse(),
+            val: (self.val * 1000.) as u64,
+            monitor,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct Supersample<I>
 where
     I: Iterator,
