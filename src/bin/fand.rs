@@ -127,7 +127,7 @@ fn main() {
     let clients_copy = Arc::clone(&clients);
 
     std::thread::spawn(move || {
-        for val in rx.iter() {
+        while let Ok(val) = rx.recv() {
             let current_clients = &mut *clients_copy.lock().unwrap();
             let mut to_del: Vec<usize> = Vec::new();
             for (iclient, mut client) in current_clients.iter().enumerate() {
