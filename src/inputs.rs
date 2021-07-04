@@ -1,10 +1,9 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
-
 use std::fs;
 use std::process::Command;
 
-use log::debug;
-
+/// An input to the control loop.
 #[derive(Serialize, Deserialize)]
 pub enum Input {
     RPiCpuTemp,

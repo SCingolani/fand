@@ -3,7 +3,7 @@
 //! inspired by the way iterator adaptors work in the itertools crate, but also using a "builder"
 //! kind of approach: For each possible operation there is a struct *`OperationName`*`Parameters`
 //! which contain the parameters that define the operation itself. These structs implement a common
-//! trait -[Operation](trait.Operation)- which takes the parameters and an input iterator, to
+//! trait -[Operation][parameters::Operation]- which takes the parameters and an input iterator, to
 //! produce the new iterator that applies the corresponding operation. There is also an enum over
 //! the different parameter structs to facilitate serialization / deserialization.
 
@@ -20,6 +20,7 @@ use tracing::{event, Level};
 use pid::Pid;
 use std::iter::Fuse;
 
+/// The identity operation.
 #[derive(Debug, Serialize)]
 pub struct Identity<I>
 where
@@ -55,6 +56,7 @@ where
     }
 }
 
+/// A PID control operation.
 #[derive(Debug, Serialize)]
 pub struct PID<I>
 where
@@ -136,6 +138,7 @@ where
     }
 }
 
+/// A (critically) dampened oscillator operation.
 #[derive(Debug, Serialize)]
 pub struct DampenedOscillator<I>
 where
@@ -147,7 +150,7 @@ where
     k: f64,
     dt: f64,
     target: f64,
-    c: f64, // should not be manually set! but we save it to don't have to calcualte sqrt every time step
+    c: f64, // should not be manually set! but we save it to don't have to calculate sqrt every time step
     pos: f64,
     vel: f64,
     acc: f64,
@@ -222,6 +225,7 @@ where
     }
 }
 
+/// A clipping operation.
 #[derive(Debug, Serialize)]
 pub struct Clip<I>
 where
@@ -292,6 +296,7 @@ where
     }
 }
 
+/// An operation which returns `x` if `x` is at least some value, `0` otherwise.
 #[derive(Debug, Serialize)]
 pub struct AtLeast<I>
 where
@@ -357,6 +362,7 @@ where
     }
 }
 
+/// A super-sampling operation.
 #[derive(Debug, Serialize)]
 pub struct Supersample<I>
 where
@@ -435,6 +441,7 @@ where
     }
 }
 
+/// A sub-sampling operation.
 #[derive(Debug, Serialize)]
 pub struct Subsample<I>
 where
@@ -490,6 +497,7 @@ where
     }
 }
 
+/// A moving average operation.
 #[derive(Debug, Serialize)]
 pub struct Average<I>
 where

@@ -1,12 +1,11 @@
-use serde::{Deserialize, Serialize};
-
-use log::debug;
-
 use ::std::{thread, time};
+use log::debug;
+use rppal::pwm;
+use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-use rppal::pwm;
-
+/// The output that is being controlled. They implement the `Pushable` trait, meaning that they
+/// define a way to send (i.e. push) a value to the output.
 #[derive(Serialize, Deserialize)]
 pub enum Output {
     PWM,
@@ -17,6 +16,11 @@ pub trait Pushable {
     fn push(&mut self, val: f64);
 }
 
+/// Start the control loop with no exit condition. This takes essentially any iterator which
+/// produces `f64`s, which is sampled at a given `rate`, and these values are then fed into the
+/// output. NOTE: The current implementation *will not push new values unless the differ by more
+/// than 0.001*. This is, of course, very arbitrary and has to change in future versions, possibly
+/// providing an adjustable threshold.
 pub fn sample_forever(
     mut source: Box<dyn Iterator<Item = f64>>,
     mut output: Box<dyn Pushable>,
@@ -36,13 +40,21 @@ pub fn sample_forever(
     }
 }
 
+/// Wrapper around (rppal)[https://crates.io/crates/rppal]'s pwm; it has a fixed frequency in
+/// current implementation (see (new)[#method.new]) and also has a special logic if it is starting
+/// from a duty cycle of 0: it turns the output to 100% and blocks for 500ms, and then returns to
+/// normal operation.
 pub struct PWM {
     pin: pwm::Pwm,
     last_zero: bool,
 }
 
 impl PWM {
+    /// Create a new PWM output; current implementation has fixed 10kHz frequency and inverse
+    /// polarity.
     pub fn new() -> Result<PWM, rppal::pwm::Error> {
+        // TODO: Remove defaults values here and instead have them as parameters of the Output
+        // enum.
         let pwm = pwm::Pwm::with_frequency(
             pwm::Channel::Pwm0,
             10000.0,
@@ -59,6 +71,8 @@ impl PWM {
 
 impl Pushable for PWM {
     fn push(&mut self, val: f64) {
+        // TODO: Code below is specific to my current setup; the special behaviour when starting
+        // from 0 could be implemented in an operation, such logic doesn't belong here.
         const START_POWER: f64 = 100.0;
         debug!("PWM output set to {:2.4}", val / 100_f64);
         if val < 10.0 {

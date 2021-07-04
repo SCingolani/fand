@@ -1,4 +1,6 @@
-//! Module containing all the parameters that define the operations.
+//! Module containing all the parameters that define the operations. This permits (de-)serializing the
+//! definition of a pipeline. The trait [Operation] allows the creation at runtime of the operation
+//! itself as an iterator adaptor.
 
 use serde::{Deserialize, Serialize};
 
