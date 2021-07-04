@@ -1,25 +1,18 @@
-use std::vec;
-
-use std::io::Write;
-use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::Arc;
-use std::sync::Mutex;
-
+use clap::{App, Arg};
 use log::{debug, trace};
-
+use pid::Pid;
 use pifan::inputs::Input;
 use pifan::operations::parameters::*;
 use pifan::outputs::Output;
 use pifan::pipeline::Pipeline;
-
-use pid::Pid;
-
-use std::fs::File;
-use std::os::unix::fs::PermissionsExt;
-
 use simplelog::*;
-
-use clap::{App, Arg};
+use std::fs::File;
+use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::vec;
 
 fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
     let listener = {
@@ -41,16 +34,24 @@ fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
 
     let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
 
+    // The pipeline spawns a thread to do the control loop and gives back a channel to get internal
+    // state information.
     let rx = pipeline.start(true).unwrap();
 
     let clients_copy = Arc::clone(&clients);
 
+    // Start a thread to send data to any active clients
     std::thread::spawn(move || {
         while let Ok(val) = rx.recv() {
+            // Lock the list of clients
             let current_clients = &mut *clients_copy.lock().unwrap();
+            // And we will keep track if we need to delete some client
             let mut to_del: Vec<usize> = Vec::new();
+
             for (iclient, mut client) in current_clients.iter().enumerate() {
                 let res = client.write_all(val.as_bytes());
+                // If there is an error when sending the data to the client, add it to the list of
+                // clients to disconnect from.
                 if res.is_err() {
                     debug!("Error while writing data to client; will forget client. Client: {:?}. Err: {:?}", client, res);
                     to_del.push(iclient);
@@ -62,9 +63,11 @@ fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
                 let mut i: usize = 0;
                 current_clients.retain(|_| (!to_del.contains(&i), i += 1).0); // this doesn't look idiomatic, but it was taken from the examples given in the std documentation...
             }
+            // After this clients that were removed from the vector should have been dropped.
         }
     });
 
+    // In main thread listen for incoming connections into the socket
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -73,6 +76,9 @@ fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
             }
             Err(err) => {
                 debug!("Error while handling incoming connection: {}", err);
+                // Here something very wrong must have happened... if we continue down this path
+                // the application should on main since it is not expecting to ever return from
+                // this method.
                 break;
             }
         }
