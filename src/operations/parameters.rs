@@ -6,7 +6,6 @@ use pid::Pid;
 
 use std::sync::mpsc::Sender;
 
-
 #[derive(Debug)]
 pub struct Monitor {
     pub id: usize,

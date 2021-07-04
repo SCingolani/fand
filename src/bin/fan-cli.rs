@@ -1,5 +1,5 @@
+use std::io::{BufRead, BufReader, Read};
 use std::os::unix::net::UnixStream;
-use std::io::{Read,BufRead,BufReader};
 
 use std::collections::HashMap;
 
@@ -16,10 +16,13 @@ fn main() {
         let the_rest: serde_json::Result<HashMap<String, f64>> = serde_json::from_str(&the_rest);
         println!("The operation is {} at index {:?}", operation_name, id);
         if let Ok(the_rest) = the_rest {
-          match operation_name {
-              "PID" => println!("P: {}\tI: {}\t D: {}\t", the_rest["P"], the_rest["I"], the_rest["D"]),
-              _ => println!(""),
-          }
+            match operation_name {
+                "PID" => println!(
+                    "P: {}\tI: {}\t D: {}\t",
+                    the_rest["P"], the_rest["I"], the_rest["D"]
+                ),
+                _ => println!(""),
+            }
         } else {
             println!("Failed to parse the rest");
         }

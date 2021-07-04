@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::inputs::Input;
 use crate::operations::parameters::*;
-use crate::outputs::{sample_forever, Output, PWM, External};
+use crate::outputs::{sample_forever, External, Output, PWM};
 
 use std::sync::mpsc;
 
@@ -21,7 +21,10 @@ impl Pipeline {
         let (tx, rx) = mpsc::channel();
         for (index, operation) in self.operations.iter().enumerate() {
             let local_tx = if monitored {
-                Some(Monitor{ id: index, tx: tx.clone() })
+                Some(Monitor {
+                    id: index,
+                    tx: tx.clone(),
+                })
             } else {
                 None
             };
@@ -32,7 +35,9 @@ impl Pipeline {
             last_iterator = match operation {
                 OperationParameters::Identity(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::PID(op) => Box::new(op.apply(last_iterator, local_tx)),
-                OperationParameters::DampenedOscillator(op) => Box::new(op.apply(last_iterator, local_tx)),
+                OperationParameters::DampenedOscillator(op) => {
+                    Box::new(op.apply(last_iterator, local_tx))
+                }
                 OperationParameters::Clip(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::AtLeast(op) => Box::new(op.apply(last_iterator, local_tx)),
                 OperationParameters::Supersample(op) => Box::new(op.apply(last_iterator, local_tx)),
@@ -45,7 +50,7 @@ impl Pipeline {
         // with errors?
         let output: Box<dyn crate::outputs::Pushable + Send> = match self.output {
             Output::PWM => Box::new(PWM::new().unwrap()),
-            Output::External(cmd) => Box::new(External {cmd}),
+            Output::External(cmd) => Box::new(External { cmd }),
         };
 
         // If running in monitored mode, spawn a new thread, otherwise run pipeline in current

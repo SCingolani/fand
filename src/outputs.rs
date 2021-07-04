@@ -19,15 +19,18 @@ pub trait Pushable {
     fn push(&mut self, val: f64);
 }
 
-pub fn sample_forever(mut source: Box<Iterator<Item = f64>>, mut output: Box<dyn Pushable>, rate: u64)
-{
+pub fn sample_forever(
+    mut source: Box<Iterator<Item = f64>>,
+    mut output: Box<dyn Pushable>,
+    rate: u64,
+) {
     let mut last: f64 = 0.0;
     loop {
         let next: f64 = match source.next() {
             Some(val) => val,
             None => break,
         };
-        if (last*100.).round() as u64 != (next*100.).round() as u64 {
+        if (last * 100.).round() as u64 != (next * 100.).round() as u64 {
             output.push(next);
         }
         last = next;
@@ -49,7 +52,10 @@ impl PWM {
             pwm::Polarity::Inverse,
             true,
         )?;
-        Ok(PWM { pin: pwm, last_zero: false})
+        Ok(PWM {
+            pin: pwm,
+            last_zero: false,
+        })
     }
 }
 
@@ -57,7 +63,8 @@ impl Pushable for PWM {
     fn push(&mut self, val: f64) {
         const START_POWER: f64 = 100.0;
         debug!("PWM output set to {:2.4}", val / 100_f64);
-        if val < 10.0 { // val is zero?
+        if val < 10.0 {
+            // val is zero?
             self.last_zero = true;
         } else if self.last_zero {
             self.pin.set_duty_cycle(START_POWER / 100_f64).unwrap();
@@ -78,6 +85,9 @@ impl Pushable for External {
     fn push(&mut self, val: f64) {
         // TODO: rudimentary implementation for testing purposes
         let cmd = self.cmd.clone();
-        let command_output = Command::new(cmd).arg(format!("{}", val)).output().expect("External output command failed");
+        let command_output = Command::new(cmd)
+            .arg(format!("{}", val))
+            .output()
+            .expect("External output command failed");
     }
 }

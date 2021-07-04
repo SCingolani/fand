@@ -27,9 +27,17 @@ impl Iterator for Input {
             }
             Input::External(cmd) => {
                 // TODO: rudimentary implementation for testing purposes
-                let command_output = Command::new(cmd).output().expect("External input command failed");
-                let output_string = String::from_utf8(command_output.stdout).expect("Failed to parse external input as string");
-                Some(output_string.trim().parse::<f64>().expect("Failed to parse external input as float"))
+                let command_output = Command::new(cmd)
+                    .output()
+                    .expect("External input command failed");
+                let output_string = String::from_utf8(command_output.stdout)
+                    .expect("Failed to parse external input as string");
+                Some(
+                    output_string
+                        .trim()
+                        .parse::<f64>()
+                        .expect("Failed to parse external input as float"),
+                )
             }
         }
     }

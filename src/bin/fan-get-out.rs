@@ -1,6 +1,5 @@
+use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
-use std::io::{BufRead,BufReader};
-
 
 fn main() {
     let stream = BufReader::new(UnixStream::connect("/tmp/fand.socket").unwrap());

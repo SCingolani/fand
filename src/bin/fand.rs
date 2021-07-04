@@ -1,9 +1,9 @@
 use std::vec;
 
-use std::os::unix::net::{UnixStream, UnixListener};
-use std::sync::Mutex;
-use std::sync::Arc;
 use std::io::Write;
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use log::{debug, trace};
 
@@ -21,20 +21,22 @@ use simplelog::*;
 
 use clap::{App, Arg};
 
-
-
 fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
     let listener = {
-            debug!("Starting UNIX socket at: {}", socket_path);
-            let listener = UnixListener::bind(socket_path).expect(format!("Failed to open socket at {}", socket_path).as_str());
-            // TODO: Hack to make it easy to use the socket; setting such permissions doesn't feel
-            // very UNIX-y
-            std::fs::metadata(socket_path)
-                .map(|metadata| metadata.permissions())
-                .map(|mut perms| { perms.set_mode(0o666); perms }) // read write for user and group and everybody
-                .and_then(|perms| std::fs::set_permissions(socket_path, perms))
-                .expect("Failed to set permissions on socket");
-            listener
+        debug!("Starting UNIX socket at: {}", socket_path);
+        let listener = UnixListener::bind(socket_path)
+            .expect(format!("Failed to open socket at {}", socket_path).as_str());
+        // TODO: Hack to make it easy to use the socket; setting such permissions doesn't feel
+        // very UNIX-y
+        std::fs::metadata(socket_path)
+            .map(|metadata| metadata.permissions())
+            .map(|mut perms| {
+                perms.set_mode(0o666);
+                perms
+            }) // read write for user and group and everybody
+            .and_then(|perms| std::fs::set_permissions(socket_path, perms))
+            .expect("Failed to set permissions on socket");
+        listener
     };
 
     let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
@@ -61,15 +63,14 @@ fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
                 current_clients.retain(|_| (!to_del.contains(&i), i += 1).0); // this doesn't look idiomatic, but it was taken from the examples given in the std documentation...
             }
         }
-    }
-    );
+    });
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let mut current_clients = clients.lock().unwrap();
                 current_clients.push(stream);
-            },
+            }
             Err(err) => {
                 debug!("Error while handling incoming connection");
                 break;
@@ -99,14 +100,16 @@ fn main() {
         )
         .arg(
             Arg::with_name("socket")
-            .short("s")
-            .long("socket")
-            .value_name("SOCKET_PATH")
-            .help("Use a unix socket at SOCKET_PATH to broadcast internal state of control loop")
-            .takes_value(true),
+                .short("s")
+                .long("socket")
+                .value_name("SOCKET_PATH")
+                .help(
+                    "Use a unix socket at SOCKET_PATH to broadcast internal state of control loop",
+                )
+                .takes_value(true),
         )
         .get_matches();
-    
+
     match matches.occurrences_of("v") {
         0 => TermLogger::init(LevelFilter::Error, Config::default(), TerminalMode::Mixed).unwrap(),
         1 => TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Mixed).unwrap(),
@@ -169,14 +172,13 @@ fn main() {
 
     // If a UNIX socket is requested we need to fork to serve clients and to perform the control
     // loop, otherwise we just execute the control loop in the main thread.
-    
-    
+
     match matches.value_of("socket") {
         Some(socket_path) => bind_socket_and_listen(socket_path, pipeline),
-        None =>
-        { pipeline.start(false); } // in current implementation this is blocking and will never return
+        None => {
+            pipeline.start(false);
+        } // in current implementation this is blocking and will never return
     };
-
 
     debug!("Something went wrong 😅");
 
