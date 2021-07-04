@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::inputs::Input;
 use crate::operations::parameters::*;
-use crate::outputs::{sample_forever, Output, PWM};
+use crate::outputs::{sample_forever, Output, PWM, External};
 
 use std::sync::mpsc;
 
@@ -43,9 +43,9 @@ impl Pipeline {
         // TODO: Below code should be generalized if more outputs are to be implemented; is here a
         // good point to call the constructors? How to generalize over different types? How to deal
         // with errors?
-        let output = match self.output {
-            Output::PWM => PWM::new().unwrap(),
-            Output::Sink => unimplemented!(),
+        let output: Box<dyn crate::outputs::Pushable + Send> = match self.output {
+            Output::PWM => Box::new(PWM::new().unwrap()),
+            Output::External(cmd) => Box::new(External {cmd}),
         };
 
         // If running in monitored mode, spawn a new thread, otherwise run pipeline in current

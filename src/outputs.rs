@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use log::debug;
 
 use ::std::{thread, time};
+use std::process::Command;
 
 use rppal::pwm;
 
@@ -11,16 +12,14 @@ use std::time::Instant;
 #[derive(Serialize, Deserialize)]
 pub enum Output {
     PWM,
-    Sink,
+    External(String),
 }
 
 pub trait Pushable {
     fn push(&mut self, val: f64);
 }
 
-pub fn sample_forever<I>(mut source: Box<Iterator<Item = f64>>, mut output: I, rate: u64)
-where
-    I: Pushable,
+pub fn sample_forever(mut source: Box<Iterator<Item = f64>>, mut output: Box<dyn Pushable>, rate: u64)
 {
     let mut last: f64 = 0.0;
     loop {
@@ -53,6 +52,7 @@ impl PWM {
         Ok(PWM { pin: pwm, last_zero: false})
     }
 }
+
 impl Pushable for PWM {
     fn push(&mut self, val: f64) {
         const START_POWER: f64 = 100.0;
@@ -67,5 +67,17 @@ impl Pushable for PWM {
             self.last_zero = false;
         }
         self.pin.set_duty_cycle(val / 100_f64).unwrap();
+    }
+}
+
+pub struct External {
+    pub cmd: String,
+}
+
+impl Pushable for External {
+    fn push(&mut self, val: f64) {
+        // TODO: rudimentary implementation for testing purposes
+        let cmd = self.cmd.clone();
+        let command_output = Command::new(cmd).arg(format!("{}", val)).output().expect("External output command failed");
     }
 }
