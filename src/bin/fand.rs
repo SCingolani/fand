@@ -21,6 +21,63 @@ use simplelog::*;
 
 use clap::{App, Arg};
 
+
+
+fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
+    let listener = {
+            debug!("Starting UNIX socket at: {}", socket_path);
+            let listener = UnixListener::bind(socket_path).expect(format!("Failed to open socket at {}", socket_path).as_str());
+            // TODO: Hack to make it easy to use the socket; setting such permissions doesn't feel
+            // very UNIX-y
+            std::fs::metadata(socket_path)
+                .map(|metadata| metadata.permissions())
+                .map(|mut perms| { perms.set_mode(0o666); perms }) // read write for user and group and everybody
+                .and_then(|perms| std::fs::set_permissions(socket_path, perms))
+                .expect("Failed to set permissions on socket");
+            listener
+    };
+
+    let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let rx = pipeline.start(true).unwrap();
+
+    let clients_copy = Arc::clone(&clients);
+
+    std::thread::spawn(move || {
+        while let Ok(val) = rx.recv() {
+            let current_clients = &mut *clients_copy.lock().unwrap();
+            let mut to_del: Vec<usize> = Vec::new();
+            for (iclient, mut client) in current_clients.iter().enumerate() {
+                let res = client.write_all(val.as_bytes());
+                if res.is_err() {
+                    debug!("Error while writing data to client; will forget client. Client: {:?}. Err: {:?}", client, res);
+                    to_del.push(iclient);
+                }
+            }
+
+            // inefficient but should be OK since adding and removing clients should be rare
+            if !to_del.is_empty() {
+                let mut i: usize = 0;
+                current_clients.retain(|_| (!to_del.contains(&i), i += 1).0); // this doesn't look idiomatic, but it was taken from the examples given in the std documentation...
+            }
+        }
+    }
+    );
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                let mut current_clients = clients.lock().unwrap();
+                current_clients.push(stream);
+            },
+            Err(err) => {
+                debug!("Error while handling incoming connection");
+                break;
+            }
+        }
+    }
+}
+
 fn main() {
     let matches = App::new("Fan speed control")
         .version("0.1")
@@ -39,6 +96,14 @@ fn main() {
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of verbosity"),
+        )
+        .arg(
+            Arg::with_name("socket")
+            .short("s")
+            .long("socket")
+            .value_name("SOCKET_PATH")
+            .help("Use a unix socket at SOCKET_PATH to broadcast internal state of control loop")
+            .takes_value(true),
         )
         .get_matches();
     
@@ -102,63 +167,16 @@ fn main() {
         }
     };
 
-    const SOCKET_ADDRESS: &str = "/tmp/fand.socket";
-    debug!("Starting UNIX socket at: {}", SOCKET_ADDRESS);
-    let listener = match UnixListener::bind(SOCKET_ADDRESS) {
-        Ok(socket) => socket,
-        Err(err) => {
-            println!("Couldn't bind to socket at {}. {:?}", SOCKET_ADDRESS, err);
-            return
-        }
+    // If a UNIX socket is requested we need to fork to serve clients and to perform the control
+    // loop, otherwise we just execute the control loop in the main thread.
+    
+    
+    match matches.value_of("socket") {
+        Some(socket_path) => bind_socket_and_listen(socket_path, pipeline),
+        None =>
+        { pipeline.start(false); } // in current implementation this is blocking and will never return
     };
-    match std::fs::metadata(SOCKET_ADDRESS)
-        .map(|metadata| metadata.permissions())
-        .map(|mut perms| { perms.set_mode(0o666); perms }) // read write for user and group and everybody
-        .and_then(|perms| std::fs::set_permissions(SOCKET_ADDRESS, perms))
-        {
-          Ok(()) => (),
-          Err(err) => debug!("Failed to set permissions on socket. Err: {:?}", err),
-        }
 
-    let clients: Arc<Mutex<Vec<UnixStream>>> = Arc::new(Mutex::new(Vec::new()));
-
-    let rx = pipeline.start(true).unwrap();
-
-    let clients_copy = Arc::clone(&clients);
-
-    std::thread::spawn(move || {
-        while let Ok(val) = rx.recv() {
-            let current_clients = &mut *clients_copy.lock().unwrap();
-            let mut to_del: Vec<usize> = Vec::new();
-            for (iclient, mut client) in current_clients.iter().enumerate() {
-                let res = client.write_all(val.as_bytes());
-                if res.is_err() {
-                    debug!("Error while writting data to client; will forget client. Client: {:?}. Err: {:?}", client, res);
-                    to_del.push(iclient);
-                }
-            }
-
-            // inneficient but should be OK since adding and removing clients should be rare
-            if !to_del.is_empty() {
-                let mut i: usize = 0;
-                current_clients.retain(|_| (!to_del.contains(&i), i += 1).0); // this doesn't look idiomatic, but it was taken from the examples given in the std documentation...
-            }
-        }
-    }
-    );
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                let mut current_clients = clients.lock().unwrap();
-                current_clients.push(stream);
-            },
-            Err(err) => {
-                debug!("Error while handling incoming connection");
-                break;
-            }
-        }
-    }
 
     debug!("Something went wrong 😅");
 

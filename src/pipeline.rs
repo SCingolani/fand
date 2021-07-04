@@ -48,10 +48,15 @@ impl Pipeline {
             Output::Sink => unimplemented!(),
         };
 
-        std::thread::spawn(move || sample_forever(last_iterator, output, sample_rate));
+        // If running in monitored mode, spawn a new thread, otherwise run pipeline in current
+        // thread.
+        // TODO: This behaviour is quite unexpected, best solution would be to have two functions,
+        // one which spawns a new thread (regardless of monitoring) and another which doesn't.
         if monitored {
+            std::thread::spawn(move || sample_forever(last_iterator, output, sample_rate));
             Some(rx)
         } else {
+            sample_forever(last_iterator, output, sample_rate);
             None
         }
     }
