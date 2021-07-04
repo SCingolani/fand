@@ -1,11 +1,10 @@
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
 
 use std::collections::HashMap;
 
 fn main() {
-    let mut stream = BufReader::new(UnixStream::connect("/tmp/fand.socket").unwrap());
-    let mut response = String::new();
+    let stream = BufReader::new(UnixStream::connect("/tmp/fand.socket").unwrap());
     for line in stream.lines() {
         let line = line.unwrap();
         println!("{}", line);

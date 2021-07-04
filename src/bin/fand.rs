@@ -72,7 +72,7 @@ fn bind_socket_and_listen(socket_path: &str, pipeline: Pipeline) {
                 current_clients.push(stream);
             }
             Err(err) => {
-                debug!("Error while handling incoming connection");
+                debug!("Error while handling incoming connection: {}", err);
                 break;
             }
         }

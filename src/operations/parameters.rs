@@ -14,7 +14,9 @@ pub struct Monitor {
 
 impl Monitor {
     pub fn send(&self, str: String) {
-        self.tx.send(format!("{}: {}", self.id, str));
+        self.tx
+            .send(format!("{}: {}", self.id, str))
+            .expect("Failed to send data to monitor; main thread must have crashed.");
     }
 }
 

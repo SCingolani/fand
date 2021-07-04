@@ -7,8 +7,6 @@ use std::process::Command;
 
 use rppal::pwm;
 
-use std::time::Instant;
-
 #[derive(Serialize, Deserialize)]
 pub enum Output {
     PWM,
@@ -20,7 +18,7 @@ pub trait Pushable {
 }
 
 pub fn sample_forever(
-    mut source: Box<Iterator<Item = f64>>,
+    mut source: Box<dyn Iterator<Item = f64>>,
     mut output: Box<dyn Pushable>,
     rate: u64,
 ) {
@@ -85,7 +83,7 @@ impl Pushable for External {
     fn push(&mut self, val: f64) {
         // TODO: rudimentary implementation for testing purposes
         let cmd = self.cmd.clone();
-        let command_output = Command::new(cmd)
+        let _ = Command::new(cmd)
             .arg(format!("{}", val))
             .output()
             .expect("External output command failed");

@@ -14,13 +14,11 @@ pub mod parameters;
 
 use serde::Serialize;
 
-use log::{debug, trace};
-use tracing::{event, span, Level};
+use log::debug;
+use tracing::{event, Level};
 
 use pid::Pid;
 use std::iter::Fuse;
-
-use std::sync::mpsc::Sender;
 
 #[derive(Debug, Serialize)]
 pub struct Identity<I>
@@ -78,7 +76,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             let control = self.pid.next_control_output(val);
             let output = {
@@ -166,7 +163,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             self.target = val;
 
@@ -247,7 +243,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             // Clip and ordering not implemented for f64; so we round up. Here we assume we are
             // generally dealing with values between 0 and 100...
@@ -317,7 +312,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             // Clip and ordering not implemented for f64; so we round up. Here we assume we are
             // generally dealing with values between 0 and 100...
@@ -385,7 +379,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if self.last_val.is_some() && self.count < self.n {
             let serialized: String = serde_json::to_string(&self).unwrap();
             event!(
@@ -462,8 +455,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
-        for i in (0..self.n) {
+        for _i in 0..self.n {
             let _discard = self.iter.next();
         }
         let next = self.iter.next();
@@ -520,7 +512,6 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        let span = span!(Level::TRACE, "monitoring");
         if let Some(val) = self.iter.next() {
             if self.prev_vals.len() < self.n {
                 self.prev_vals.push(val);
